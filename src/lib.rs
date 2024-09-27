@@ -24,7 +24,7 @@ impl ZKP {
         if *k >= c * x {
             return (k - c * x).modpow(&BigUint::from(1u32), &self.q);
         }
-        return &self.q - (c * x - k).modpow(&BigUint::from(1u32), &self.q);
+        &self.q - (c * x - k).modpow(&BigUint::from(1u32), &self.q)
     }
 
     /// r1 = alpha^s * y1^c
@@ -71,7 +71,10 @@ impl ZKP {
         let alpha = hex::decode("A4D1CBD5C3FD34126765A442EFB99905F8104DD258AC507FD6406CFF14266D31266FEA1E5C41564B777E690F5504F213160217B4B01B886A5E91547F9E2749F4D7FBD7D3B9A92EE1909D0D2263F80A76A6A24C087A091F531DBF0A0169B6A28AD662A4D18E73AFA32D779D5918D08BC8858F4DCEF97C2A24855E6EEB22B3B2E5").expect("could not convert to hex");
         let alpha = BigUint::from_bytes_be(&alpha);
 
-        let beta = alpha.modpow(&ZKP::generate_random_number_bellow(&q), &p);
+        let exp = BigUint::from_bytes_be(
+            &hex::decode("266FEA1E5C41564B777E69").unwrap()
+        );
+        let beta = alpha.modpow(&exp, &p);
 
         (p, q, alpha, beta)
     }

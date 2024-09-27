@@ -1,4 +1,4 @@
-use std::{collections::HashMap, hash::Hash};
+use std::collections::HashMap;
 
 use num_bigint::BigUint;
 use std::sync::Mutex;
@@ -29,8 +29,6 @@ struct UserInfo {
 
     // verification
     pub c: BigUint,
-    pub s: BigUint,
-    pub session_id: String,
 }
 
 #[derive(Debug, Default)]
@@ -50,12 +48,12 @@ impl Auth for AuthImpl {
 
         // Inputs
         let mut user_info = UserInfo::default();
-        user_info.user_name = request.user.clone();
+        user_info.user_name.clone_from(&request.user);
         user_info.y1 = BigUint::from_bytes_be(&request.y1);
         user_info.y2 = BigUint::from_bytes_be(&request.y2);
 
         // Lock the user info
-        let mut user_info_hashmap = &mut self.user_info.lock().unwrap();
+        let user_info_hashmap = &mut self.user_info.lock().unwrap();
         user_info_hashmap.insert(request.user, user_info);
 
         Ok(Response::new(RegisterResponse {}))
@@ -68,7 +66,7 @@ impl Auth for AuthImpl {
         println!("Processing authentication challenge {:?}", request);
         let request = request.into_inner();
 
-        let mut user_info_hashmap = &mut self.user_info.lock().unwrap();
+        let user_info_hashmap = &mut self.user_info.lock().unwrap();
 
         if let Some(user_info) = user_info_hashmap.get_mut(&request.user) {
             user_info.r1 = BigUint::from_bytes_be(&request.r1);
@@ -78,9 +76,11 @@ impl Auth for AuthImpl {
             let c = ZKP::generate_random_number_bellow(&q);
             let auth_id = ZKP::generate_random_string(32);
 
-            user_info.c = c.clone();
+            user_info.c.clone_from(&c);
+            user_info.r1.clone_from(&BigUint::from_bytes_be(&request.r1));
+            user_info.r2.clone_from(&BigUint::from_bytes_be(&request.r2));
 
-            let mut auth_id_to_user = &mut self.auth_id_to_user.lock().unwrap();
+            let auth_id_to_user = &mut self.auth_id_to_user.lock().unwrap();
             auth_id_to_user.insert(auth_id.clone(), request.user);
 
             Ok(Response::new(AuthenticationChallengeResponse {
@@ -102,10 +102,10 @@ impl Auth for AuthImpl {
         println!("Processing authentication answer {:?}", request);
         let request = request.into_inner();
 
-        let mut auth_id_to_user = &mut self.auth_id_to_user.lock().unwrap();
+        let auth_id_to_user = &mut self.auth_id_to_user.lock().unwrap();
 
         if let Some(user_name) = auth_id_to_user.get(&request.auth_id) {
-            let mut user_info_hashmap = &mut self.user_info.lock().unwrap();
+            let user_info_hashmap = &mut self.user_info.lock().unwrap();
             let user_info = user_info_hashmap.get(user_name).expect("auth id not found");
 
             let (p, q, alpha, beta) = ZKP::get_constants();
